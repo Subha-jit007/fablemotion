@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { validateSpec } from "../../../spec/schema.mjs";
+import { SYSTEM_PROMPT } from "../../../lib/embedded";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -10,7 +9,7 @@ export const maxDuration = 300;
 const MODEL = process.env.FABLEMOTION_MODEL ?? "claude-opus-4-8";
 
 function systemPrompt() {
-  return fs.readFileSync(path.join(process.cwd(), "agent", "system-prompt.md"), "utf8");
+  return SYSTEM_PROMPT;
 }
 
 function extractSpec(text: string) {

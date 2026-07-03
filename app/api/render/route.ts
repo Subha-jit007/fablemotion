@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 600;
 
 export async function POST(req: NextRequest) {
-  if (process.env.VERCEL) {
+  if (process.env.VERCEL || typeof (globalThis as any).WebSocketPair !== "undefined") {
     return NextResponse.json(
       {
         error:

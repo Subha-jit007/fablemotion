@@ -5,9 +5,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> }
 ) {
-  const spec = getVideo(params.name);
+  const { name } = await params;
+  const spec = getVideo(name);
   if (!spec) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ spec });
 }

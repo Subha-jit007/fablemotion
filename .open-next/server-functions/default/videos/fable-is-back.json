@@ -1,0 +1,53 @@
+{
+  "title": "Fable is back",
+  "format": "landscape",
+  "fps": 30,
+  "theme": { "preset": "paper" },
+  "backdrop": "drift",
+  "scenes": [
+    {
+      "type": "kinetic",
+      "words": ["Deeper.", "Longer.", "Sharper.", "Back."],
+      "durationInFrames": 96
+    },
+    {
+      "type": "title",
+      "text": "Fable is back",
+      "sub": "The most capable Claude model returns.",
+      "durationInFrames": 110
+    },
+    {
+      "type": "statement",
+      "lines": ["Bigger context.", "Deeper reasoning.", "Longer horizons."],
+      "accentLine": 2,
+      "durationInFrames": 96
+    },
+    {
+      "type": "counter",
+      "value": 128,
+      "suffix": "K",
+      "label": "output tokens per request",
+      "decimals": 0,
+      "durationInFrames": 84
+    },
+    {
+      "type": "compare",
+      "title": "context window",
+      "left": { "label": "then", "value": "200K" },
+      "right": { "label": "now", "value": "1M" },
+      "durationInFrames": 90
+    },
+    {
+      "type": "code",
+      "title": "the upgrade",
+      "code": "client.messages.create({\n  model: \"claude-fable-5\",\n  ...\n})",
+      "durationInFrames": 96
+    },
+    {
+      "type": "logo",
+      "text": "FABLEMOTION",
+      "tagline": "made with fablemotion",
+      "durationInFrames": 84
+    }
+  ]
+}
