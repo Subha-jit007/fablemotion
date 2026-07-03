@@ -6,3 +6,5 @@ public/renders/
 .env*
 
 .vercel
+
+.open-next/
