@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Player } from "@remotion/player";
+import { Player, type PlayerRef } from "@remotion/player";
 import { SpecVideo } from "../remotion/SpecVideo";
 import { FORMATS, totalDuration } from "../spec/schema.mjs";
 import demo from "../videos/fable-is-back.json";
@@ -11,6 +11,21 @@ import type { Spec } from "../remotion/types";
 const spec = demo as unknown as Spec;
 const size = FORMATS[spec.format];
 const frames = totalDuration(spec);
+
+// cumulative frame boundaries → scene lookup for the HUD
+const sceneStarts: number[] = [];
+{
+  let acc = 0;
+  for (const s of spec.scenes) {
+    sceneStarts.push(acc);
+    acc += s.durationInFrames;
+  }
+}
+const sceneAt = (f: number) => {
+  let i = 0;
+  while (i + 1 < sceneStarts.length && f >= sceneStarts[i + 1]) i++;
+  return i;
+};
 
 const TERMINAL_LINES = [
   "> make a 20s launch video for my portfolio",
@@ -27,7 +42,41 @@ const TERMINAL_LINES = [
 
 export default function Landing() {
   const rootRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<PlayerRef>(null);
   const [typed, setTyped] = useState(0);
+  const [hudFrame, setHudFrame] = useState(0);
+
+  // Guarantee the hero is always filming: try native playback, and if the
+  // Player won't advance (some browsers stall it), drive frames ourselves.
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    const onFrame = (e: { detail: { frame: number } }) => setHudFrame(e.detail.frame);
+    p.addEventListener("frameupdate", onFrame as any);
+    p.play();
+
+    let raf = 0;
+    const fallback = window.setTimeout(() => {
+      const stalled = !p.isPlaying() || p.getCurrentFrame() === 0;
+      if (!stalled) return;
+      p.pause();
+      const t0 = performance.now();
+      const drive = (t: number) => {
+        const f = Math.floor(((t - t0) / 1000) * spec.fps) % frames;
+        p.seekTo(f);
+        raf = requestAnimationFrame(drive);
+      };
+      raf = requestAnimationFrame(drive);
+    }, 900);
+
+    return () => {
+      window.clearTimeout(fallback);
+      cancelAnimationFrame(raf);
+      p.removeEventListener("frameupdate", onFrame as any);
+    };
+  }, []);
+
+  const sceneIdx = sceneAt(hudFrame);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -210,28 +259,113 @@ export default function Landing() {
           </div>
         </div>
 
-        <div
-          data-hero-card
-          style={{
-            borderRadius: 20,
-            overflow: "hidden",
-            boxShadow: "0 50px 100px rgba(26,23,20,0.28)",
-            border: "1px solid var(--line)",
-            background: "#000",
-          }}
-        >
-          <Player
-            component={SpecVideo}
-            inputProps={{ spec }}
-            durationInFrames={frames}
-            fps={spec.fps}
-            compositionWidth={size.width}
-            compositionHeight={size.height}
-            style={{ width: "100%" }}
-            autoPlay
-            loop
-            controls={false}
-          />
+        <div data-hero-card>
+          <div
+            style={{
+              borderRadius: 20,
+              overflow: "hidden",
+              boxShadow: "0 50px 100px rgba(26,23,20,0.28)",
+              border: "1px solid var(--line)",
+              background: "var(--paper)",
+              position: "relative",
+            }}
+          >
+            <Player
+              ref={playerRef}
+              component={SpecVideo}
+              inputProps={{ spec }}
+              durationInFrames={frames}
+              fps={spec.fps}
+              compositionWidth={size.width}
+              compositionHeight={size.height}
+              style={{ width: "100%", display: "block" }}
+              autoPlay
+              loop
+              controls={false}
+              clickToPlay={false}
+              acknowledgeRemotionLicense
+            />
+            {/* live badge */}
+            <div
+              style={{
+                position: "absolute",
+                top: 14,
+                left: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontFamily: "var(--mono)",
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                color: "var(--ink)",
+                background: "rgba(247,242,233,0.85)",
+                padding: "5px 12px",
+                borderRadius: 999,
+                border: "1px solid var(--line)",
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  background: "var(--clay)",
+                  animation: "fmPulse 1.4s ease-in-out infinite",
+                }}
+              />
+              LIVE RENDER
+            </div>
+          </div>
+
+          {/* scene HUD — synced to the player */}
+          <div style={{ padding: "14px 6px 0" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                fontFamily: "var(--mono)",
+                fontSize: 12,
+                letterSpacing: "0.14em",
+                marginBottom: 8,
+              }}
+            >
+              <span style={{ color: "var(--clay)", textTransform: "uppercase" }}>
+                scene {String(sceneIdx + 1).padStart(2, "0")}/{String(spec.scenes.length).padStart(2, "0")} · {spec.scenes[sceneIdx].type}
+              </span>
+              <span style={{ opacity: 0.5 }}>
+                {(hudFrame / spec.fps).toFixed(1)}s / {(frames / spec.fps).toFixed(0)}s
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 5 }}>
+              {spec.scenes.map((s, i) => {
+                const start = sceneStarts[i];
+                const local = Math.min(Math.max((hudFrame - start) / s.durationInFrames, 0), 1);
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      flex: s.durationInFrames,
+                      height: 4,
+                      borderRadius: 2,
+                      background: "var(--soft)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${local * 100}%`,
+                        height: "100%",
+                        background: i === sceneIdx ? "var(--clay)" : "var(--ink)",
+                        opacity: i === sceneIdx ? 1 : 0.55,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <style>{`@keyframes fmPulse { 0%,100% { opacity: 1; transform: scale(1);} 50% { opacity: 0.35; transform: scale(0.8);} }`}</style>
         </div>
       </header>
 
