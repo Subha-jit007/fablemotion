@@ -1,65 +1,112 @@
 # FABLEMOTION
 
-Prompt-to-motion studio. Describe a launch video in a sentence — an agent composes a **scene
-spec** (JSON), Remotion films it live in the browser, one click renders the MP4. The aesthetic is
-trained on the model-announcement style: warm paper, oversized serif, spring word-reveals, hero
-stats. Colorful, never the dark-AI cliché.
+**Describe a video in a sentence. Watch it get filmed.**
 
-## Run it
+FABLEMOTION turns plain language into launch-grade motion graphics — the kind that ships with a
+product announcement. You write a scene spec (JSON), [Remotion](https://remotion.dev) films it live
+in the browser, one click renders the MP4. The look is trained on the model-announcement style:
+warm paper, oversized serif, spring word-reveals, hero stats. Colorful — never the dark-AI cliché.
+
+No account. No API key required. It runs entirely on your machine.
 
 ```sh
+git clone https://github.com/Subha-jit007/fablemotion
+cd fablemotion
 npm install
 npm run dev          # → http://localhost:3711
 ```
 
-- `/` — landing page (the hero *is* a live render of `videos/fable-is-back.json`)
-- `/studio` — chat with the agent, watch the preview, save to library, render MP4
+- **`/`** — landing page; the hero is a live render of `videos/fable-is-back.json`
+- **`/studio`** — preview any video, edit its JSON, render an MP4, chat with the director
 
-## Two ways to direct
+Requires **Node 18+**. First ever render downloads a headless Chrome (one-time, a couple minutes).
 
-### 1. Web agent (needs an Anthropic API key — optional)
+---
 
-Click **key** in the studio header and paste an `sk-ant-…` key (stored in your browser's
-localStorage, sent only to your own local server). Or set `ANTHROPIC_API_KEY` in `.env.local` to
-share one server-side. Model defaults to `claude-opus-4-8`; override with `FABLEMOTION_MODEL`.
+## Edit videos three ways
 
-### 2. Claude Code over MCP (no API key needed)
+### 1. By hand — no AI, no key
 
-Your Claude Code session *is* the director — its own intelligence composes the spec, so the
-Anthropic key is genuinely optional.
+The spec *is* the video. Open `/studio`, hit **JSON**, and edit — the preview updates as you type.
+Or edit any file in `videos/*.json` directly. The whole grammar is nine scene types (below); you can
+author a complete film without touching the agent. This is the floor: it always works, for everyone.
 
-If you open Claude Code inside this folder, the bundled `.mcp.json` registers the server
-automatically. From anywhere else:
+### 2. With Claude Code — no key
+
+Your [Claude Code](https://claude.com/claude-code) session becomes the director; its own intelligence
+composes the spec, so an Anthropic key is genuinely optional. Opening Claude Code inside this folder
+auto-registers the bundled `.mcp.json`. From anywhere else:
 
 ```sh
-claude mcp add fablemotion -- node E:/Projects/fablemotion/mcp/server.mjs
+claude mcp add fablemotion -- node mcp/server.mjs
 ```
 
-Then just ask, e.g. *"make a 20-second launch reel for my portfolio"*. The session will:
+Then just ask — *"a 20s portrait launch reel for my coffee app, playful, end on the name."* The
+session will `get_style_guide` → compose → `save_video` → `render_video`. Keep `npm run dev` running
+to watch previews at `/studio?video=<name>`. Tools: `get_style_guide`, `list_videos`, `get_video`,
+`save_video`, `render_video`.
 
-1. `get_style_guide` — load the motion-director training (aesthetic + spec format)
-2. `save_video` — validate + save the spec; replies with a live studio preview link
-3. `render_video` — export the MP4 with Remotion
+**Prefer the browser but have no key?** Run the local bridge and the studio links to it:
 
-Other tools: `list_videos`, `get_video`. Keep `npm run dev` running to watch previews at
-`http://localhost:3711/studio?video=<name>`.
+```sh
+node bridge.mjs      # → localhost:3799, powered by your Claude Code login
+```
 
-## The engine
+The studio's header pill turns green (*"Claude Code linked · no key"*) and the chat box works — no
+API key involved. (Windows: double-click `wake-fablemotion.bat`.)
 
-- `spec/schema.mjs` — the scene-spec DSL (Zod). Single source of truth shared by the Remotion
-  composition, the API routes, and the MCP server.
-- `remotion/` — the composition. 9 scene types: `title`, `kinetic`, `statement`, `counter`,
-  `list`, `code`, `chart`, `compare`, `logo`. Three themes: `paper`, `ink`, `candy`. Formats:
-  landscape / portrait / square.
-- `agent/system-prompt.md` — the "training": aesthetic rules, pacing rules, DSL reference,
-  output contract. Served to the web agent as its system prompt and to Claude Code via the
-  `get_style_guide` MCP tool. Edit this file to retrain the director.
-- `videos/` — the library (plain JSON specs; web and MCP share it)
-- `public/renders/` — rendered MP4s
+### 3. With an Anthropic API key — optional
 
-## Notes
+Click **key** in the studio header and paste an `sk-ant-…` key (stored only in your browser), or set
+`ANTHROPIC_API_KEY` in `.env.local` for a shared server-side key. Model defaults to `claude-opus-4-8`;
+override with `FABLEMOTION_MODEL`.
 
-- First ever render downloads headless Chrome (~one-time, a few minutes).
-- `npm run remotion:studio` opens Remotion Studio for frame-by-frame scene development.
-- Render from the CLI: `npx remotion render remotion/index.ts SpecVideo out.mp4 --props=<file>`
-  where the props file is `{ "spec": { … } }`.
+---
+
+## The scene grammar
+
+Every video is `{ title, format, fps, theme, backdrop, scenes[] }`. `format` is
+`landscape` | `portrait` | `square`; `theme.preset` is `paper` | `ink` | `candy`; `backdrop` is
+`drift` | `grain` | `none`. Each scene has a `type` and `durationInFrames`:
+
+| type | fields | for |
+|---|---|---|
+| `title` | `text`, `sub?` | the headline moment (last word auto-italicizes in the accent) |
+| `kinetic` | `words` (2–8) | rapid one-word-at-a-time hook |
+| `statement` | `lines` (1–5), `accentLine?` | line-by-line manifesto |
+| `counter` | `value`, `label`, `prefix?`, `suffix?`, `decimals` | one hero stat counting up |
+| `list` | `title?`, `items` (2–6) | numbered lineup |
+| `code` | `title?`, `code` | a terminal typing a snippet |
+| `chart` | `title?`, `data` (2–6 `{label,value}`) | bar comparison |
+| `compare` | `title?`, `left`, `right` (`{label,value}`) | before / after |
+| `logo` | `text`, `tagline?` | closing sting |
+
+The full rules — pacing, aesthetic, examples — live in **`agent/system-prompt.md`**. That one file is
+the director's training; edit it to change the house style. `spec/schema.mjs` is the Zod source of
+truth shared by the composition, the API, and the MCP server, so bad specs are caught everywhere.
+
+## Render
+
+One click in the studio, or from the CLI:
+
+```sh
+# props file is { "spec": { …a videos/*.json… } }
+npx remotion render remotion/index.ts SpecVideo out.mp4 --props=props.json
+```
+
+`npm run remotion:studio` opens Remotion Studio for frame-by-frame work. Renders land in
+`public/renders/`.
+
+## Layout
+
+```
+spec/schema.mjs        the DSL (Zod) — single source of truth
+remotion/              the composition: 9 scene types × 3 themes × 3 formats
+agent/system-prompt.md the director's training (aesthetic + pacing + spec contract)
+app/                   Next.js studio + landing (/, /studio) + API routes
+mcp/server.mjs         MCP server — makes Claude Code the director
+bridge.mjs             local no-key bridge for the browser studio
+videos/                the library (plain JSON specs)
+```
+
+MIT licensed. Made with webs, not templates — by [Subha](https://github.com/Subha-jit007).

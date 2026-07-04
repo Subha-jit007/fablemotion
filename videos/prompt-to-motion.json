@@ -1,0 +1,52 @@
+{
+  "title": "Prompt to motion",
+  "format": "landscape",
+  "fps": 30,
+  "theme": { "preset": "paper" },
+  "backdrop": "drift",
+  "scenes": [
+    {
+      "type": "kinetic",
+      "words": ["Prompt.", "Compose.", "Render.", "Ship."],
+      "durationInFrames": 96
+    },
+    {
+      "type": "title",
+      "text": "Prompt to motion",
+      "sub": "A sentence becomes a launch film.",
+      "durationInFrames": 110
+    },
+    {
+      "type": "statement",
+      "lines": ["You describe it.", "Claude directs it.", "Remotion films it."],
+      "accentLine": 2,
+      "durationInFrames": 100
+    },
+    {
+      "type": "counter",
+      "value": 9,
+      "label": "scene types, infinite films",
+      "decimals": 0,
+      "durationInFrames": 84
+    },
+    {
+      "type": "compare",
+      "title": "time to a launch video",
+      "left": { "label": "by hand", "value": "days" },
+      "right": { "label": "fablemotion", "value": "minutes" },
+      "durationInFrames": 90
+    },
+    {
+      "type": "code",
+      "title": "just say it",
+      "code": "fablemotion › \"20s launch film,\n  coffee brand BREW, playful,\n  end on the name\"\n\n▸ composing 6 scenes…\n▸ rendering 1920×1080 @ 30fps",
+      "durationInFrames": 100
+    },
+    {
+      "type": "logo",
+      "text": "FABLEMOTION",
+      "tagline": "prompt it · watch it · ship it",
+      "durationInFrames": 84
+    }
+  ]
+}
