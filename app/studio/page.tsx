@@ -13,6 +13,9 @@ type Msg = { role: "user" | "assistant"; content: string };
 type LibraryRow = { name: string; title: string; format: string; scenes: number; seconds: number };
 
 const KEY_STORAGE = "fm_anthropic_key";
+const LOCAL_BRIDGE = "http://localhost:3799";
+
+type BridgeState = { mode: "key" | "cli" | "none"; base: string; label: string };
 
 const panel: React.CSSProperties = {
   background: "#FFFDF8",
@@ -42,6 +45,7 @@ function StudioInner() {
   const [library, setLibrary] = useState<LibraryRow[]>([]);
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [bridge, setBridge] = useState<BridgeState>({ mode: "none", base: "", label: "linking…" });
   const [jsonOpen, setJsonOpen] = useState(false);
   const [jsonDraft, setJsonDraft] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -57,8 +61,36 @@ function StudioInner() {
     if (r?.videos) setLibrary(r.videos);
   }, []);
 
+  // Decide how the director gets powered: your key, or a local Claude Code
+  // bridge running on this machine (no key — same trick as the suuu site).
+  const checkBridge = useCallback(async (key: string) => {
+    if (key) {
+      setBridge({ mode: "key", base: "", label: "API key mode" });
+      return;
+    }
+    try {
+      const r = await fetch(LOCAL_BRIDGE + "/api/status", {
+        signal: AbortSignal.timeout(4000),
+        // opt into Chrome's Local Network Access flow so a hosted page may
+        // reach this loopback bridge (say "Allow" if it asks)
+        targetAddressSpace: "loopback",
+      } as RequestInit);
+      const d = await r.json();
+      if (d.cli) {
+        setBridge({ mode: "cli", base: LOCAL_BRIDGE, label: "Claude Code linked · no key" });
+        return;
+      }
+    } catch {
+      // no bridge answering
+    }
+    setBridge({ mode: "none", base: "", label: "no key · no bridge" });
+  }, []);
+
   useEffect(() => {
-    setApiKey(localStorage.getItem(KEY_STORAGE) ?? "");
+    const stored = localStorage.getItem(KEY_STORAGE) ?? "";
+    setApiKey(stored);
+    checkBridge(stored);
+    const id = setInterval(() => checkBridge(localStorage.getItem(KEY_STORAGE) ?? ""), 30000);
     refreshLibrary();
     const name = params.get("video");
     if (name) {
@@ -67,7 +99,8 @@ function StudioInner() {
         .then((r) => r.spec && setSpec(r.spec))
         .catch(() => {});
     }
-  }, [params, refreshLibrary]);
+    return () => clearInterval(id);
+  }, [params, refreshLibrary, checkBridge]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,16 +112,33 @@ function StudioInner() {
     const next = [...messages, { role: "user" as const, content }];
     setMessages(next);
     setInput("");
+    // No key and no local bridge → tell the user how to wake one, don't 401.
+    if (!apiKey && bridge.mode === "none") {
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content:
+            "No director connected. Either paste an Anthropic key (top-right “key”), or — for free, no key — grab the repo and run wake-fablemotion.bat with Claude Code installed, then reload. If Chrome asks to allow local network access, say yes.",
+        },
+      ]);
+      setShowKey(true);
+      return;
+    }
+
+    const useBridge = !apiKey && bridge.mode === "cli";
     setBusy(true);
     try {
-      const res = await fetch("/api/agent", {
+      const opts: RequestInit = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(apiKey ? { "x-anthropic-key": apiKey } : {}),
         },
         body: JSON.stringify({ messages: next, spec }),
-      });
+      };
+      if (useBridge) (opts as RequestInit & { targetAddressSpace: string }).targetAddressSpace = "loopback";
+      const res = await fetch((useBridge ? bridge.base : "") + "/api/agent", opts);
       const data = await res.json();
       if (!res.ok) {
         setMessages([...next, { role: "assistant", content: data.error ?? "Something broke." }]);
@@ -98,7 +148,15 @@ function StudioInner() {
         if (data.spec) setSpec(data.spec);
       }
     } catch {
-      setMessages([...next, { role: "assistant", content: "Network error — is the dev server running?" }]);
+      setMessages([
+        ...next,
+        {
+          role: "assistant",
+          content: useBridge
+            ? "Lost the local bridge. Is wake-fablemotion.bat still running?"
+            : "Network error — try again.",
+        },
+      ]);
     } finally {
       setBusy(false);
     }
@@ -184,6 +242,41 @@ function StudioInner() {
         </span>
         <div style={{ flex: 1 }} />
         {notice && <span style={{ fontSize: 13, color: "var(--clay)", fontWeight: 600 }}>{notice}</span>}
+        <span
+          title={
+            bridge.mode === "cli"
+              ? "Chat runs through your local Claude Code bridge — no API key."
+              : bridge.mode === "key"
+              ? "Chat runs through your Anthropic API key."
+              : "Run wake-fablemotion.bat (needs Claude Code) or add a key."
+          }
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "5px 11px",
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            border: "1px solid var(--line)",
+            background: bridge.mode === "none" ? "transparent" : "var(--soft)",
+            color: bridge.mode === "none" ? "var(--ink)" : "var(--ink)",
+            opacity: bridge.mode === "none" ? 0.6 : 1,
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background:
+                bridge.mode === "cli" ? "#2f9e44" : bridge.mode === "key" ? "var(--clay)" : "#c0392b",
+            }}
+          />
+          {bridge.label}
+        </span>
         <button className="btn ghost" style={{ padding: "8px 18px", fontSize: 13 }} onClick={openJson}>
           JSON
         </button>
@@ -230,8 +323,9 @@ function StudioInner() {
                 <em>“A 20s launch video for a coffee app called BREW. Playful, portrait, end on the name.”</em>
                 <br />
                 <br />
-                No API key? Drive this studio from Claude Code instead — the MCP server is in the
-                README.
+                No API key? Run <code>wake-fablemotion.bat</code> (needs Claude Code) and this studio
+                links to it over your machine — the director runs on your login, free. Or drive it
+                from a Claude Code terminal over MCP.
               </div>
             )}
             {messages.map((m, i) => (
@@ -480,7 +574,9 @@ function StudioInner() {
                   className="btn"
                   style={{ padding: "9px 22px", fontSize: 13 }}
                   onClick={() => {
-                    localStorage.setItem(KEY_STORAGE, apiKey.trim());
+                    const k = apiKey.trim();
+                    localStorage.setItem(KEY_STORAGE, k);
+                    checkBridge(k);
                     setShowKey(false);
                   }}
                 >
@@ -492,6 +588,7 @@ function StudioInner() {
                   onClick={() => {
                     localStorage.removeItem(KEY_STORAGE);
                     setApiKey("");
+                    checkBridge("");
                     setShowKey(false);
                   }}
                 >

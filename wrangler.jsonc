@@ -7,5 +7,11 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "FM_KV",
+      "id": "3d8c607d1c63477097058bcdd69795e0"
+    }
+  ]
 }

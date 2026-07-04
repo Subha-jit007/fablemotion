@@ -8,3 +8,6 @@ public/renders/
 .vercel
 
 .open-next/
+
+# local wrangler/miniflare state
+.wrangler/
