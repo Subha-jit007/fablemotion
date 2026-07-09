@@ -11,6 +11,8 @@ import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { validateSpec } from "./spec/schema.mjs";
+import { brief } from "./memory/reel.mjs";
+import { observePrompt } from "./memory/taste.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.FABLEMOTION_BRIDGE_PORT || 3799;
@@ -38,7 +40,12 @@ holding the COMPLETE updated scene spec (the whole object, never a diff).
 Honor the aesthetic + DSL rules above. Do not add prose after the fence.`;
 
 function buildPrompt(messages, spec) {
-  const soul = loadPrompt();
+  // adaptive learning: the latest user turn teaches the Taste Engine before we
+  // even answer it — so brief() below already reflects what he just asked for
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (lastUser) observePrompt(lastUser.content);
+  const soul = loadPrompt() + brief(); // reel memory + learned taste
+
   const transcript = messages
     .slice(-16)
     .map((m) => (m.role === "user" ? "User: " : "Director: ") + m.content)

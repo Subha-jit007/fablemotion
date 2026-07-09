@@ -1,0 +1,59 @@
+{
+  "title": "clawed-reel-cards",
+  "format": "portrait",
+  "fps": 30,
+  "theme": {
+    "preset": "paper"
+  },
+  "backdrop": "drift",
+  "scenes": [
+    {
+      "type": "kinetic",
+      "words": [
+        "He walks.",
+        "He plays.",
+        "He judges.",
+        "He loves."
+      ],
+      "durationInFrames": 96
+    },
+    {
+      "type": "title",
+      "text": "Meet Clawed",
+      "sub": "A pixel crab who lives on your desktop.",
+      "durationInFrames": 100
+    },
+    {
+      "type": "list",
+      "title": "He will",
+      "items": [
+        "take football breaks",
+        "surf your windows",
+        "steal your cursor",
+        "stage YouTube interventions",
+        "throw commit parties",
+        "nap when you should"
+      ],
+      "durationInFrames": 130
+    },
+    {
+      "type": "title",
+      "text": "Then came Pookie",
+      "sub": "His wife. She has opinions.",
+      "durationInFrames": 100
+    },
+    {
+      "type": "counter",
+      "value": 391,
+      "label": "I love yous, and counting",
+      "decimals": 0,
+      "durationInFrames": 84
+    },
+    {
+      "type": "logo",
+      "text": "CLAWED",
+      "tagline": "clawed-five.vercel.app — Pookie included",
+      "durationInFrames": 84
+    }
+  ]
+}

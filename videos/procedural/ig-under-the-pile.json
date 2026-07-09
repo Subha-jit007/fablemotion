@@ -1,0 +1,104 @@
+{
+  "width": 1080,
+  "height": 1920,
+  "fps": 60,
+  "durationInSeconds": 20,
+  "background": {
+    "color": "#0D0B09",
+    "dotGrid": { "gap": 44, "radius": 3, "color": "#F5EDD6", "opacity": 0.06 },
+    "scanlines": { "gap": 6, "opacity": 0.08 }
+  },
+  "scenery": [
+    { "kind": "skyline", "x": 0, "y": 1150, "width": 1080, "height": 520, "dot": 6, "gap": 18, "color": "#F5EDD6", "opacity": 0.1, "seed": 3 },
+    { "kind": "ladder", "x": 330, "y": 960, "width": 420, "height": 720, "rungs": 7, "dot": 6, "gap": 22, "color": "#F5EDD6", "opacity": 0.16 },
+    { "kind": "grid", "x": 0, "y": 1806, "width": 1080, "height": 6, "dot": 5, "gap": 14, "color": "#F5EDD6", "opacity": 0.35 }
+  ],
+  "marquees": [
+    {
+      "text": "INSTAGRAM", "x": 540, "y": 380, "cell": 13, "textColor": "#D94F41",
+      "panel": { "color": "#F5EDD6", "pad": 46, "glow": 70, "bulbs": true },
+      "appearAt": 12
+    },
+    {
+      "text": "EVERY FEATURE. ONE APP.", "x": 540, "y": 620, "cell": 6,
+      "textColor": "#F5EDD6", "glow": 12, "appearAt": 1030
+    }
+  ],
+  "physics": {
+    "gravity": 0.55,
+    "restitution": 0.3,
+    "friction": 0.35,
+    "floor": 1800,
+    "seed": 7,
+    "staticBodies": [
+      {
+        "x": 540, "y": 1624, "w": 210, "h": 224,
+        "path": [
+          { "at": 0, "x": 540 }, { "at": 195, "x": 540 }, { "at": 400, "x": 320 },
+          { "at": 445, "x": 320 }, { "at": 565, "x": 720 }, { "at": 610, "x": 720 },
+          { "at": 675, "x": 520 }, { "at": 1200, "x": 520 }
+        ]
+      }
+    ],
+    "boxes": [
+      { "label": "STORIES", "w": 320, "h": 100, "spawnFrame": 150, "x": 760 },
+      { "label": "DMS", "w": 150, "h": 84, "spawnFrame": 300, "x": 240 },
+      { "label": "FOLLOWERS", "w": 410, "h": 106, "spawnFrame": 480, "x": 800 },
+      { "label": "POSTS", "w": 240, "h": 92, "spawnFrame": 560, "x": 430 },
+      { "label": "SEARCH", "w": 280, "h": 94, "spawnFrame": 600, "x": 560 },
+      { "label": "EXPLORE", "w": 320, "h": 100, "spawnFrame": 640, "x": 620 },
+      { "label": "REELS", "w": 240, "h": 92, "spawnFrame": 665, "x": 480 },
+      { "label": "STORIES", "w": 320, "h": 100, "spawnFrame": 690, "x": 560 },
+      { "label": "SEARCH", "w": 280, "h": 94, "spawnFrame": 710, "x": 420 },
+      { "label": "POSTS", "w": 240, "h": 92, "spawnFrame": 730, "x": 600 },
+      { "label": "REELS", "w": 240, "h": 92, "spawnFrame": 750, "x": 520 },
+      { "label": "DMS", "w": 150, "h": 84, "spawnFrame": 770, "x": 350 }
+    ],
+    "style": {
+      "depth": 26,
+      "palette": ["#FFDC80", "#F77737", "#E1306C", "#C13584", "#5851DB", "#405DE6"],
+      "textColor": "#0D0B09",
+      "cell": 6
+    }
+  },
+  "sprites": [
+    {
+      "preset": "ig-bot",
+      "x": 540, "y": 1800, "cell": 16,
+      "path": [
+        { "at": 0, "x": 540 }, { "at": 195, "x": 540 }, { "at": 400, "x": 320 },
+        { "at": 445, "x": 320 }, { "at": 565, "x": 720 }, { "at": 610, "x": 720 },
+        { "at": 675, "x": 520 }, { "at": 1200, "x": 520 }
+      ],
+      "stateTimeline": [
+        { "at": 0, "name": "idle" },
+        { "at": 180, "name": "startle" },
+        { "at": 230, "name": "idle" },
+        { "at": 425, "name": "startle" },
+        { "at": 475, "name": "idle" },
+        { "at": 600, "name": "startle" },
+        { "at": 640, "name": "scream" },
+        { "at": 1020, "name": "lost" }
+      ],
+      "emotes": [
+        { "at": 185, "until": 230, "text": "!" },
+        { "at": 430, "until": 475, "text": "?!" },
+        { "at": 615, "until": 660, "text": "!!" },
+        { "at": 730, "until": 1000, "text": "AAAAH!", "blinkRate": 24 },
+        { "at": 1060, "until": 1190, "text": "..." }
+      ],
+      "float": { "amplitude": 3, "frequency": 0.05 },
+      "struggle": { "startAt": 720, "until": 1020, "ampX": 26, "ampY": 14, "frequency": 0.55, "pinnedRows": 4 },
+      "crush": {
+        "keys": [
+          { "at": 640, "amount": 0 },
+          { "at": 720, "amount": 0.22 },
+          { "at": 800, "amount": 0.45 },
+          { "at": 900, "amount": 0.68 },
+          { "at": 1010, "amount": 0.82 },
+          { "at": 1200, "amount": 0.82 }
+        ]
+      }
+    }
+  ]
+}

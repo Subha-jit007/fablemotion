@@ -15,6 +15,8 @@ export const THEME_PRESETS = {
   ink: { bg: "#171512", fg: "#F3EEE3", accent: "#E8845E", accent2: "#7FB4A2", soft: "#262220" },
   // Saturated candy — for playful launches
   candy: { bg: "#FFF3E8", fg: "#241A33", accent: "#F0426B", accent2: "#5B3DF5", soft: "#FFE3CC" },
+  // Retro cinema marquee — the Fable-5 launch-film look: warm black, glowing cream, pixel red
+  marquee: { bg: "#0D0B09", fg: "#F5EDD6", accent: "#D94F41", accent2: "#D97757", soft: "#2B2620" },
 };
 
 const colors = z.object({
@@ -114,7 +116,7 @@ export const specSchema = z.object({
   fps: z.number().int().min(24).max(60).default(30),
   theme: z
     .object({
-      preset: z.enum(["paper", "ink", "candy"]).default("paper"),
+      preset: z.enum(["paper", "ink", "candy", "marquee"]).default("paper"),
       colors: colors.partial().optional(),
     })
     .default({ preset: "paper" }),

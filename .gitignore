@@ -11,3 +11,11 @@ public/renders/
 
 # local wrangler/miniflare state
 .wrangler/
+
+# REEL MEMORY — this user's local learning; never committed, never uploaded
+memory/reel/
+eye/out/
+
+# derived artifacts
+tsconfig.tsbuildinfo
+*.eye.json

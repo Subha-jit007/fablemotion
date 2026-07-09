@@ -1,0 +1,71 @@
+{
+  "title": "instagram-everything-app",
+  "format": "portrait",
+  "fps": 30,
+  "theme": {
+    "preset": "candy",
+    "colors": {
+      "accent": "#E1306C"
+    }
+  },
+  "backdrop": "drift",
+  "scenes": [
+    {
+      "type": "kinetic",
+      "words": [
+        "Share.",
+        "Watch.",
+        "Chat.",
+        "Shop.",
+        "Go live."
+      ],
+      "durationInFrames": 110
+    },
+    {
+      "type": "title",
+      "text": "Instagram",
+      "sub": "Every moment. Every way.",
+      "durationInFrames": 96
+    },
+    {
+      "type": "list",
+      "title": "One app, all of it",
+      "items": [
+        "Reels",
+        "Stories",
+        "DMs & Notes",
+        "Live",
+        "Shop",
+        "Explore"
+      ],
+      "durationInFrames": 132
+    },
+    {
+      "type": "counter",
+      "value": 2,
+      "label": "people every month",
+      "suffix": "B+",
+      "decimals": 0,
+      "durationInFrames": 88
+    },
+    {
+      "type": "compare",
+      "title": "since 2010",
+      "left": {
+        "label": "then",
+        "value": "Photos"
+      },
+      "right": {
+        "label": "now",
+        "value": "Everything"
+      },
+      "durationInFrames": 90
+    },
+    {
+      "type": "logo",
+      "text": "INSTAGRAM",
+      "tagline": "capture and share the world's moments",
+      "durationInFrames": 84
+    }
+  ]
+}

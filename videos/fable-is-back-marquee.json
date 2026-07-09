@@ -1,0 +1,70 @@
+{
+  "version": 2,
+  "meta": {
+    "title": "Fable 5 — Now Showing",
+    "format": "landscape",
+    "fps": 30,
+    "theme": { "preset": "marquee" },
+    "backdrop": "grain",
+    "mood": "nostalgic"
+  },
+  "cast": {
+    "now-showing": {
+      "kind": "text", "role": "caption", "content": "NOW SHOWING",
+      "treatment": "pixel", "glow": true, "accent": "all",
+      "align": "center"
+    },
+    "sign": { "kind": "shape", "shape": "sign", "size": 980 },
+    "fable": {
+      "kind": "text", "role": "display", "content": "FABLE 5",
+      "treatment": "pixel", "glow": false, "accent": "all",
+      "align": "center", "font": "serif"
+    },
+    "isback": {
+      "kind": "text", "role": "headline", "content": "is back.",
+      "treatment": "clean", "accent": "last-word", "align": "center"
+    },
+    "tagline": {
+      "kind": "text", "role": "kicker", "content": "One prompt. One launch film.",
+      "treatment": "clean", "glow": true, "accent": "none", "align": "center"
+    },
+    "brand": {
+      "kind": "text", "role": "caption", "content": "FABLEMOTION",
+      "treatment": "pixel", "glow": true, "accent": "none", "align": "center"
+    }
+  },
+  "acts": [
+    {
+      "name": "marquee",
+      "beats": [
+        {
+          "intent": "hook",
+          "durationInFrames": 80,
+          "transition": "cut",
+          "moves": [
+            { "verb": "enter", "cast": "now-showing", "ease": "settle", "at": "top", "delay": 4 },
+            { "verb": "enter", "cast": "sign", "ease": "pop", "at": "center" },
+            { "verb": "enter", "cast": "fable", "ease": "snap", "at": "center", "delay": 14 }
+          ]
+        },
+        {
+          "intent": "punch",
+          "durationInFrames": 50,
+          "transition": "cut",
+          "moves": [
+            { "verb": "enter", "cast": "isback", "ease": "snap", "at": "center", "dir": "up" }
+          ]
+        },
+        {
+          "intent": "outro",
+          "durationInFrames": 90,
+          "transition": "fade",
+          "moves": [
+            { "verb": "enter", "cast": "brand", "ease": "settle", "at": "center" },
+            { "verb": "enter", "cast": "tagline", "ease": "settle", "at": "bottom", "delay": 20, "dir": "up" }
+          ]
+        }
+      ]
+    }
+  ]
+}

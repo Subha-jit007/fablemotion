@@ -9,6 +9,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { specSchema, totalDuration } from "../spec/schema.mjs";
+import { scoreSchema, isScore, totalDuration as scoreDuration, flattenBeats } from "../spec/score.mjs";
+import { compileLegacy } from "../spec/macros.mjs";
+import { lintScore } from "../canon/canon.mjs";
+import { peakFrames } from "../eye/extract.mjs";
+import { approve, brief, indexAssets, recordFix, knownFix } from "../memory/reel.mjs";
+import { learnFromEdit, observeApprove } from "../memory/taste.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VIDEOS = path.join(ROOT, "videos");
@@ -27,7 +33,7 @@ server.tool(
   "REQUIRED READING before composing any video. Returns the FABLEMOTION motion-director training: the aesthetic rules, pacing rules, and the full scene-spec JSON format. Call this once at the start of a video task.",
   {},
   async () =>
-    text(fs.readFileSync(path.join(ROOT, "agent", "system-prompt.md"), "utf8"))
+    text(fs.readFileSync(path.join(ROOT, "agent", "system-prompt.md"), "utf8") + brief())
 );
 
 server.tool(
@@ -39,9 +45,13 @@ server.tool(
       .readdirSync(VIDEOS)
       .filter((f) => f.endsWith(".json"))
       .map((f) => {
-        const spec = JSON.parse(fs.readFileSync(path.join(VIDEOS, f), "utf8"));
-        const secs = Math.round(totalDuration(spec) / (spec.fps ?? 30));
-        return `- ${f.replace(/\.json$/, "")} — "${spec.title}" (${spec.format}, ${spec.scenes.length} scenes, ~${secs}s)`;
+        const raw = JSON.parse(fs.readFileSync(path.join(VIDEOS, f), "utf8"));
+        if (isScore(raw)) {
+          const secs = Math.round(scoreDuration(raw) / (raw.meta.fps ?? 30));
+          return `- ${f.replace(/\.json$/, "")} — "${raw.meta.title}" (v2 score, ${raw.meta.format}, ${flattenBeats(raw).length} beats, ~${secs}s)`;
+        }
+        const secs = Math.round(totalDuration(raw) / (raw.fps ?? 30));
+        return `- ${f.replace(/\.json$/, "")} — "${raw.title}" (${raw.format}, ${raw.scenes.length} scenes, ~${secs}s)`;
       });
     return text(rows.length ? rows.join("\n") : "Library is empty.");
   }
@@ -68,7 +78,8 @@ server.tool(
       .describe("The complete video spec object, matching the format from get_style_guide"),
   },
   async ({ name, spec }) => {
-    const parsed = specSchema.safeParse(spec);
+    const schema = isScore(spec) ? scoreSchema : specSchema;
+    const parsed = schema.safeParse(spec);
     if (!parsed.success) {
       return text(
         `Spec rejected:\n${parsed.error.issues
@@ -76,13 +87,80 @@ server.tool(
           .join("\n")}`
       );
     }
+    // CANON gate: lint before saving; errors block, warns are returned as notes.
+    const score = isScore(parsed.data) ? parsed.data : compileLegacy(parsed.data);
+    const issues = lintScore(score);
+    const errors = issues.filter((i) => i.level === "error");
+    if (errors.length)
+      return text(`CANON rejects this cut:\n${errors.map((i) => `- [${i.law}] beat ${i.beat}: ${i.msg}`).join("\n")}`);
     fs.mkdirSync(VIDEOS, { recursive: true });
     const slug = slugify(name);
-    fs.writeFileSync(path.join(VIDEOS, `${slug}.json`), JSON.stringify(parsed.data, null, 2));
-    const secs = Math.round(totalDuration(parsed.data) / parsed.data.fps);
+    // adaptive learning: if this overwrites a prior cut, learn from the diff
+    const priorFile = path.join(VIDEOS, `${slug}.json`);
+    const prior = fs.existsSync(priorFile) ? JSON.parse(fs.readFileSync(priorFile, "utf8")) : null;
+    fs.writeFileSync(priorFile, JSON.stringify(parsed.data, null, 2));
+    if (prior) learnFromEdit(prior, parsed.data);
+    const secs = Math.round(scoreDuration(score) / score.meta.fps);
+    const warns = issues.filter((i) => i.level === "warn");
     return text(
-      `Saved '${slug}' (${parsed.data.scenes.length} scenes, ~${secs}s).\nLive preview: ${STUDIO_URL}/studio?video=${slug}\nRender with render_video when the user is happy.`
+      `Saved '${slug}' (${flattenBeats(score).length} beats, ~${secs}s).` +
+        (warns.length ? `\nCANON warnings to consider:\n${warns.map((i) => `- [${i.law}] beat ${i.beat}: ${i.msg}`).join("\n")}` : "") +
+        `\nLive preview: ${STUDIO_URL}/studio?video=${slug}\nNext: eye_stills to LOOK at your beats before rendering final.`
     );
+  }
+);
+
+server.tool(
+  "lint_score",
+  "Run the CANON laws over a v1 spec or v2 score without saving. Returns errors (blocking) and warnings (taste risks). Free and instant — lint before you save.",
+  { spec: z.record(z.any()).describe("A complete v1 spec or v2 score object") },
+  async ({ spec }) => {
+    const schema = isScore(spec) ? scoreSchema : specSchema;
+    const parsed = schema.safeParse(spec);
+    if (!parsed.success)
+      return text(`Invalid:\n${parsed.error.issues.map((i) => `- ${i.path.join(".")}: ${i.message}`).join("\n")}`);
+    const score = isScore(parsed.data) ? parsed.data : compileLegacy(parsed.data);
+    const issues = lintScore(score);
+    return text(issues.length ? issues.map((i) => `${i.level.toUpperCase()} [${i.law}] beat ${i.beat}: ${i.msg}`).join("\n") : "CANON-clean.");
+  }
+);
+
+server.tool(
+  "eye_stills",
+  "THE EYE, in-session: renders one still per beat of a saved video (half scale, fast) and returns the PNG paths. READ those images with your Read tool, judge each beat against the style guide's CANON + psychology, then revise the score and save again. You are the critic — no key, no other model.",
+  { name: z.string().describe("Name of a saved video from the library") },
+  async ({ name }) => {
+    const slug = slugify(name);
+    const file = path.join(VIDEOS, `${slug}.json`);
+    if (!fs.existsSync(file)) return text(`No video named '${name}'. Save it first.`);
+    const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+    const score = isScore(raw) ? scoreSchema.parse(raw) : compileLegacy(specSchema.parse(raw));
+    const { extractStills } = await import("../eye/extract.mjs");
+    const outDir = path.join(ROOT, "eye", "out", slug, `mcp-${Date.now()}`);
+    const { stills } = await extractStills(score, outDir);
+    const peaks = peakFrames(score);
+    return text(
+      `Beat stills ready — Read each PNG and judge it (hierarchy, scale confidence, accent discipline, negative space, mood fit):\n` +
+        stills.map((s) => `- beat ${s.beat} (frame ${peaks[s.beat]}): ${s.path}`).join("\n")
+    );
+  }
+);
+
+server.tool(
+  "approve_video",
+  "Record a finished video into REEL MEMORY (local, gitignored, never uploaded). Approved work becomes few-shot taste for future videos — this is how the studio self-heals toward this user's taste. Call when the user says they're happy with a cut.",
+  {
+    name: z.string().describe("Name of the saved video"),
+    overall: z.number().min(0).max(10).optional().describe("Eye rating if one was made"),
+  },
+  async ({ name, overall }) => {
+    const slug = slugify(name);
+    const file = path.join(VIDEOS, `${slug}.json`);
+    if (!fs.existsSync(file)) return text(`No video named '${name}'.`);
+    const entry = approve(slug, JSON.parse(fs.readFileSync(file, "utf8")), overall != null ? { overall } : null);
+    observeApprove(slug);
+    indexAssets();
+    return text(`'${slug}' entered reel memory (${entry.approvedAt}). Future videos will learn from it.`);
   }
 );
 
@@ -101,12 +179,11 @@ server.tool(
     fs.mkdirSync(cacheDir, { recursive: true });
     const stamp = Date.now();
     const outFile = path.join(outDir, `${slug}-${stamp}.mp4`);
-    // The composition takes { spec } as input props; the library file is the bare spec.
+    // v1 files render on SpecVideo with { spec }; v2 scores on ScoreVideo with { score }.
+    const raw = JSON.parse(fs.readFileSync(specFile, "utf8"));
+    const composition = isScore(raw) ? "ScoreVideo" : "SpecVideo";
     const propsFile = path.join(cacheDir, `props-${stamp}.json`);
-    fs.writeFileSync(
-      propsFile,
-      JSON.stringify({ spec: JSON.parse(fs.readFileSync(specFile, "utf8")) })
-    );
+    fs.writeFileSync(propsFile, JSON.stringify(isScore(raw) ? { score: raw } : { spec: raw }));
     const bin = path.join(
       ROOT,
       "node_modules",
@@ -117,7 +194,7 @@ server.tool(
     const result = await new Promise((resolve) => {
       const child = spawn(
         bin,
-        ["render", "remotion/index.ts", "SpecVideo", outFile, `--props=${propsFile}`],
+        ["render", "remotion/index.ts", composition, outFile, `--props=${propsFile}`],
         { cwd: ROOT, shell: process.platform === "win32" }
       );
       let log = "";
@@ -130,7 +207,14 @@ server.tool(
     fs.rmSync(propsFile, { force: true });
 
     if (result.code !== 0 || !fs.existsSync(outFile)) {
-      return text(`Render failed:\n${String(result.log).slice(-3000)}`);
+      // self-healing: remember failure fingerprints and surface a fix that worked before
+      const fingerprint = String(result.log).match(/Error[^\n]{0,120}/)?.[0] ?? `exit-${result.code}`;
+      const fix = knownFix(fingerprint);
+      if (!fix) recordFix(fingerprint, null);
+      return text(
+        `Render failed:\n${String(result.log).slice(-3000)}` +
+          (fix ? `\n\nREEL MEMORY knows this failure — fix that worked before: ${fix}` : "")
+      );
     }
     return text(
       `Rendered: ${outFile}\nServed at: ${STUDIO_URL}/renders/${path.basename(outFile)} (while the studio dev server runs)`
